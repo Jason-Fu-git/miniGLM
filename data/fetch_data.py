@@ -1,14 +1,14 @@
 import os
 import sys
 
-from dataset_infos import infos
-
 name = sys.argv[1]
-assert name in ["sanguo", "xiyou", "honglou", "shuihu"], "Unidentified dataset name!"
-info = infos[name]
+assert name in ["shediao", "shendiao", "tianlong"], "Unidentified dataset name!"
+
+links = {
+    "shendiao": "https://github.com/loyalpartner/jywxFenxi/raw/master/神雕侠侣.txt",
+    "shediao": "https://github.com/loyalpartner/jywxFenxi/raw/master/射雕英雄传.txt",
+    "tianlong": "https://github.com/loyalpartner/jywxFenxi/raw/master/天龙八部.txt"
+}
 
 os.makedirs(name, exist_ok=True)
-os.makedirs(os.path.join(name, "raw_data"), exist_ok=True)
-for i in range(info["filenum"]):
-    os.system(f"wget --no-check-certificate https://raw.githubusercontent.com/luoxuhai/chinese-novel/master/resources/{info['keyword']}/{i}.html -O {name}/raw_data/{i}.html")
-    
+os.system(f"wget --no-check-certificate {links[name]} -O {os.path.join(name, 'input.txt')}")

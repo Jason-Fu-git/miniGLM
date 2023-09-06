@@ -9,10 +9,10 @@ python prepare.py [dataset_name] # tokenize
 
 train scripts:
 ```bash
-python train.py config/train_[dataset_name].py
+python train.py config/train_config.py --dataset=[dataset_name]
 ```
 
 sample scripts:
 ```bash
-python sample.py --out_dir=[/dir/to/training/output] # or add prompts by --start=FILE:/path/to/prompts.txt
+python sample.py --out_dir=[/dir/to/training/output] --save_path=/path/to/save/output # or add prompts by --start=FILE:/path/to/prompts.txt
 ```

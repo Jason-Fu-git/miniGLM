@@ -7,6 +7,7 @@ from model import GLMConfig, MiniGLM
 # -----------------------------------------------------------------------------
 
 out_dir = 'out' # ignored if init_from is not 'resume'
+save_path = os.path.join(out_dir, 'samples')
 start = "\n" # or "<|endoftext|>" or etc. Can also specify a file, use as: "FILE:prompt.txt"
 num_samples = 10 # number of samples to draw
 max_new_tokens = 500 # number of tokens generated in each sample
@@ -47,6 +48,9 @@ enc = tiktoken.get_encoding("gpt2")
 encode = lambda s: enc.encode(s, allowed_special={"<|endoftext|>"})
 decode = lambda l: enc.decode(l)
 
+
+save_file = open(save_path, 'w')
+
 # encode the beginning of the prompt
 if start.startswith('FILE:'):
     with open(start[5:], 'r', encoding='utf-8') as f:
@@ -62,7 +66,9 @@ if start.startswith('FILE:'):
                 for k in range(num_samples):
                     y = model.generate(x, max_new_tokens, temperature=temperature, top_k=top_k)
                     print("Prompt:", start)
-                    print("Generation:", decode(y[0].tolist()))
+                    output = decode(y[0].tolist())
+                    print(output)
+                    save_file.write(output)
                     print('---------------')
 else:
     start_ids = encode(start)
@@ -73,5 +79,9 @@ else:
         with ctx:
             for k in range(num_samples):
                 y = model.generate(x, max_new_tokens, temperature=temperature, top_k=top_k)
-                print(decode(y[0].tolist()))
+                output = decode(y[0].tolist())
+                print(output)
+                save_file.write(output)
                 print('---------------')
+
+save_file.close()

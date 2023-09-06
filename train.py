@@ -5,11 +5,14 @@ import math
 import pickle
 from contextlib import nullcontext
 import matplotlib.pyplot as plt
+from functools import partial
 
 import numpy as np
 import torch
 
 from model import GLMConfig, MiniGLM
+from data_utils import init_data_pretrain, init_data_sft, get_batch_pretrain, get_batch_sft
+from visualize import visualize_loss
 
 # I/O
 out_dir = 'out'
@@ -89,21 +92,16 @@ device_type = 'cuda' if 'cuda' in device else 'cpu' # for later use in torch.aut
 ptdtype = {'float32': torch.float32, 'bfloat16': torch.bfloat16, 'float16': torch.float16}[dtype]
 ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=device_type, dtype=ptdtype)
 
-# poor man's data loader
-data_dir = os.path.join('data', dataset)
-train_data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint16, mode='r')
-val_data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint16, mode='r')
-def get_batch(split):
-    data = train_data if split == 'train' else val_data
-    ix = torch.randint(len(data) - block_size, (batch_size,))
-    x = torch.stack([torch.from_numpy((data[i:i+block_size]).astype(np.int64)) for i in ix])
-    y = torch.stack([torch.from_numpy((data[i+1:i+1+block_size]).astype(np.int64)) for i in ix])
-    if device_type == 'cuda':
-        # pin arrays x,y, which allows us to move them to GPU asynchronously (non_blocking=True)
-        x, y = x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(device, non_blocking=True)
-    else:
-        x, y = x.to(device), y.to(device)
-    return x, y
+# get data loader from data_utils.py
+if init_from == 'finetune':
+    init_data = init_data_sft
+    ### TODO: 参照pretrain，使用`functools.partial`进行sft的`get_batch`函数的定义
+    get_batch = get_batch_sft
+    ###
+else:
+    init_data = init_data_pretrain
+    get_batch = partial(get_batch_pretrain, batch_size=batch_size, block_size=block_size, device=device)
+init_data(dataset)
 
 # init these up here, can override if init_from='resume' (i.e. from a checkpoint)
 iter_num = 0
@@ -119,9 +117,9 @@ if init_from == 'scratch':
     model_args['vocab_size'] = 50304
     glm_config = GLMConfig(**model_args)
     model = MiniGLM(glm_config)
-elif init_from == 'resume':
-    print(f"Resuming training from {out_dir}")
-    # resume training from a checkpoint.
+elif init_from == 'finetune' or init_from == 'resume':
+    print(f"Initializing from {out_dir}")
+    # finetuning from a checkpoint.
     ckpt_path = os.path.join(out_dir, 'ckpt.pt')
     checkpoint = torch.load(ckpt_path, map_location=device)
     checkpoint_model_args = checkpoint['model_args']
@@ -143,8 +141,10 @@ elif init_from == 'resume':
         if k.startswith(unwanted_prefix):
             state_dict[k[len(unwanted_prefix):]] = state_dict.pop(k)
     model.load_state_dict(state_dict)
-    iter_num = checkpoint['iter_num']
-    best_val_loss = checkpoint['best_val_loss']
+    
+    if init_from == 'resume':
+        iter_num = checkpoint['iter_num']
+        best_val_loss = checkpoint['best_val_loss']
 
 # crop down the model block size if desired, using model surgery
 if block_size < model.config.block_size:
@@ -170,9 +170,9 @@ def estimate_loss():
     for split in ['train', 'val']:
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
-            X, Y = get_batch(split)
+            X, Y, loss_mask = get_batch(split)
             with ctx:
-                logits, loss = model(X, Y)
+                logits, loss = model(X, Y, loss_mask)
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
@@ -195,7 +195,7 @@ def get_lr(it):
 
 # training loop
 train_loss_list, valid_loss_list = [], []
-X, Y = get_batch('train') # fetch the very first batch
+X, Y, loss_mask = get_batch('train') # fetch the very first batch
 t_start = t0 = time.time()
 local_iter_num = 0 # number of iterations in the lifetime of this process
 running_mfu = -1.0
@@ -230,11 +230,11 @@ while True:
     # and using the GradScaler if data type is float16
     for micro_step in range(gradient_accumulation_steps):
         with ctx:
-            logits, loss = model(X, Y)
+            logits, loss = model(X, Y, loss_mask)
             loss = loss / gradient_accumulation_steps # scale the loss to account for gradient accumulation
         
         # immediately async prefetch next batch while model is doing the forward pass on the GPU
-        X, Y = get_batch('train')
+        X, Y, loss_mask = get_batch('train')
         
         # backward pass, with gradient scaling if training in fp16
         scaler.scale(loss).backward()
@@ -273,11 +273,4 @@ while True:
 t_end = time.time()
 print(f"total time for training: {(t_end-t_start):.4f}s")
 
-plt.title(f'Loss Curve for {dataset}')
-plt.xlabel('Training Iters')
-plt.ylabel('Loss')
-
-plt.plot([i * log_interval for i in range(len(train_loss_list))], train_loss_list, label='Training Loss')
-plt.plot([i * eval_interval for i in range(len(valid_loss_list))], valid_loss_list, label='Valid Loss')
-plt.legend()
-plt.savefig(os.path.join(out_dir, 'loss.png'))
+visualize_loss(train_loss_list, log_interval, valid_loss_list, eval_interval, dataset, out_dir)

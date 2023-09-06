@@ -1,6 +1,7 @@
 import time
 
-out_dir = 'out-sanguo-' + str(int(time.time()))
+dataset = 'shediao'
+out_dir = f'out-{dataset}-' + str(int(time.time()))
 eval_interval = 250 # keep frequent because we'll overfit
 eval_iters = 200
 log_interval = 10 # don't print too too often
@@ -8,7 +9,7 @@ log_interval = 10 # don't print too too often
 # we expect to overfit on this small dataset, so only save when val improves
 always_save_checkpoint = False
 
-dataset = 'sanguo'
+
 gradient_accumulation_steps = 1
 batch_size = 32
 block_size = 256 # context of up to 256 previous characters
