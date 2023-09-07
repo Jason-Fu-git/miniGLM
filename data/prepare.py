@@ -5,11 +5,10 @@ import numpy as np
 
 enc = tiktoken.get_encoding("gpt2")
 
-name = sys.argv[1]
-assert name in ["shediao", "shendiao", "tianlong"], "Unidentified dataset name!"
+names = sys.argv[1:]
 
-### TODO: read data from [name]/input.txt
-data = None
+### TODO: read data from ([name]/input.txt for name in names)
+### TODO: combine multiple books into one single data file
 ### TODO: split data for train(0.9) and valid (0.1)
 train_data, val_data = None, None
 ###
@@ -19,6 +18,6 @@ train_data, val_data = None, None
 train_ids, val_ids = None, None
 ###
 
-### TODO: save numpy array to file [name]/train.bin and [name]/val.bin
-###
-
+# save numpy array to file [name]/train.bin and [name]/val.bin
+train_ids.tofile(os.path.join('_'.join(names), 'train.bin'))
+val_ids.tofile(os.path.join('_'.join(names), 'val.bin'))

@@ -33,7 +33,7 @@ def get_batch_pretrain(split, batch_size, block_size, device):
         # pin arrays x,y, which allows us to move them to GPU asynchronously (non_blocking=True)
         x, y, loss_mask = x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(device, non_blocking=True), loss_mask.pin_memory().to(device, non_blocking=True)
     else:
-        x, y = x.to(device), y.to(device), loss_mask.to(device)
+        x, y, loss_mask = x.to(device), y.to(device), loss_mask.to(device)
     return x, y, loss_mask
     
 def get_batch_sft(split): 
