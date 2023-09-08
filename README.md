@@ -8,8 +8,8 @@ MiniGLM目前已提供or已给出框架的部分内容如下列举。
 cd data/
 ```
 
-- 下载数据：
-
+- 准备数据：
+    我们在网络学堂给大家提供了可用的数据（共15个小说），当然大家也可以通过提供的脚本进行数据下载。
     ```bash
     python fetch_data.py [dataset_names] # download
     ```

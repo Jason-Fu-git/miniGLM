@@ -19,5 +19,5 @@ train_ids, val_ids = None, None
 ###
 
 # save numpy array to file [name]/train.bin and [name]/val.bin
-train_ids.tofile(os.path.join('_'.join(names), 'train.bin'))
-val_ids.tofile(os.path.join('_'.join(names), 'val.bin'))
+train_ids.tofile(os.path.join("processed_pretrain", "train.bin"))
+val_ids.tofile(os.path.join("processed_pretrain", 'val.bin'))
