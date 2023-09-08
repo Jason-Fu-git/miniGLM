@@ -33,6 +33,12 @@ python train.py config/train_config.py --dataset=[dataset_name]
 ```
 其中`--dataset`参数指定使用数据在`data/`下的二级目录名。
 
+微调（在原有模型基础上继续训练），运行如下指令：
+```bash
+python train.py config/train_config.py --dataset=[dataset_name] --init_from=finetune --ckpt_dir=[/path/to/ckpt/dir]
+```
+其中`--dataset`参数指定使用数据在`data/`下的二级目录名, `--ckpt_dir`参数指定加载的训练模型目录位置
+
 ## 模型推理
 
 通过运行如下命令加载训练完毕的模型权重进行推理：

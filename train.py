@@ -16,6 +16,7 @@ from visualize import visualize_loss
 
 # I/O
 out_dir = 'out'
+ckpt_dir = 'ckpts'
 eval_interval = 2000
 log_interval = 1
 eval_iters = 200
@@ -118,9 +119,9 @@ if init_from == 'scratch':
     glm_config = GLMConfig(**model_args)
     model = MiniGLM(glm_config)
 elif init_from == 'finetune' or init_from == 'resume':
-    print(f"Initializing from {out_dir}")
+    print(f"Initializing from {ckpt_dir}")
     # finetuning from a checkpoint.
-    ckpt_path = os.path.join(out_dir, 'ckpt.pt')
+    ckpt_path = os.path.join(ckpt_dir, 'ckpt.pt')
     checkpoint = torch.load(ckpt_path, map_location=device)
     checkpoint_model_args = checkpoint['model_args']
     
