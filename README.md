@@ -3,13 +3,15 @@
 MiniGLM目前已提供or已给出框架的部分内容如下列举。
 
 ## 数据预处理
+
 首先进入数据目录:
 ```bash
 cd data/
 ```
 
 - 准备数据：
-    我们在网络学堂给大家提供了可用的数据（共15个小说），当然大家也可以通过提供的脚本进行数据下载。
+    我们在网络学堂给大家提供了可用的数据，当然大家也可以通过提供的脚本进行数据下载。
+    
     ```bash
     python fetch_data.py [dataset_names] # download
     ```
@@ -17,7 +19,9 @@ cd data/
     - shediao: 射雕英雄传
     - shendiao: 神雕侠侣
     - tianlong: 天龙八部
-
+    
+    也可以自行添加更多数据。
+    
 - 数据预处理（需实现）：
 
     ```
@@ -32,6 +36,10 @@ cd data/
 python train.py config/train_config.py --dataset=[dataset_name]
 ```
 其中`--dataset`参数指定使用数据在`data/`下的二级目录名。
+
+在训练过程中，会自动通过`torch.save(checkpoint, os.path.join(out_dir, 'ckpt.pt'))`保存训练过程中生成的模型
+
+
 
 微调（在原有模型基础上继续训练），运行如下指令：
 ```bash
