@@ -2,21 +2,25 @@ import os
 from contextlib import nullcontext
 import torch
 import tiktoken
-import gradio
-import re
 from model import GLMConfig, MiniGLM
+import json
 
 # -----------------------------------------------------------------------------
+# 注：如欲评估困惑度，Rough_L 等，请使用 --start=FILE: 模式
 
-# out_dir = 'finetune-0916'  # ignored if init_from is not 'resume'
-out_dir = "pretrain-0912"
+out_dir = 'finetune-0916'  # ignored if init_from is not 'resume'
+input_data = 'input.jsonl'
+output_data = 'output.jsonl'
 max_new_tokens = 1500  # number of tokens generated in each sample
-temperature = 0.8  # 1.0 = no change, < 1.0 = less random, > 1.0 = more random, in predictions
+temperature = 0.9  # 1.0 = no change, < 1.0 = less random, > 1.0 = more random, in predictions
 top_k = 100  # retain only the top_k most likely tokens, clamp others to have 0 probability
 seed = 1234
 device = 'cuda'  # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1', etc.
 dtype = 'bfloat16' if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else 'float16'  # 'float32' or 'bfloat16' or 'float16'
 compile = False  # use PyTorch 2.0 to compile the model to be faster
+eval_mode = False  # if True, run in eval mode (will visualize perplexity and Rough_L)
+exec(open('configurator.py').read())  # overrides from command line or config file
+
 # -----------------------------------------------------------------------------
 
 torch.manual_seed(seed)
@@ -46,63 +50,39 @@ enc = tiktoken.get_encoding("gpt2")
 encode = lambda s: enc.encode(s, allowed_special={"<|endoftext|>"})
 decode = lambda l: enc.decode(l)
 
+output_file = open(output_data, 'w+')
+input_file = open(input_data, 'r')
 
 # encode the beginning of the prompt
+starts = [json.loads(line)['question'].strip() for line in input_file.readlines()]  # 开始序列列表
 
-# run generation
-
-def answer_generator(question: str, history):
-    """
-    流式生成
-    """
+for start in starts:
+    question = start
+    # 追加中文问号
+    if not question.endswith('？'):
+        if question.endswith('?'):
+            question.replace('?', '？')
+        else:
+            question += '？'
+    start_ids = encode(question)
+    x = (torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...])
+    # run generation
     with torch.no_grad():
         with ctx:
-            # 追加中文问号
-            # if not question.endswith('？'):
-            #     if question.endswith('?'):
-            #         question.replace('?', '？')
-            #     else:
-            #         question += '？'
-            start_ids = encode(question)
-            x = (torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...])
-
-            for i in range(max_new_tokens):
-                y, _ = model.streaming_generate(x, temperature=temperature, top_k=top_k)
-                output_tokens = y[0].tolist()[len(start_ids):]  # 去除问题部分
-                if output_tokens[-1] == 50256:  # 输出终止
-                    return
-                x = y
-                try:
-                    end_idx = output_tokens.index(50256)
-                    output_tokens = output_tokens[:end_idx]
-                except:
-                    pass
-                output = decode(output_tokens)
-                output = output.replace('\uFFFD', '')  # 去除因截断产生的乱码
-                yield output
-
-
-def QA(question, history):
-    """
-    一次性生成，目前已经弃用
-    """
-    with torch.no_grad():
-        with ctx:
-            start_ids = encode(question)
-            x = (torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...])
             y = model.generate(x, max_new_tokens, temperature=temperature, top_k=top_k)
-            output_tokens = y[0].tolist()[len(start_ids):]  # 去除问题部分
+            print("Prompt:", start)
+            output_tokens = y[0].tolist()
             try:
                 end_idx = output_tokens.index(50256)
-                output_tokens = output_tokens[:end_idx]
+                output_tokens = output_tokens[len(start_ids):end_idx]
             except:
                 pass
             output = decode(output_tokens)
             output = output.replace('\uFFFD', '')  # 去除因截断产生的乱码
+            print(output)
+            dic = {'question': start, 'answer': output}
+            output_file.write(json.dumps(dic, ensure_ascii=False) + '\n')
+            print('---------------')
 
-            return output
-
-
-chat_box = gradio.ChatInterface(answer_generator)
-chat_box.queue()
-chat_box.launch()
+output_file.close()
+input_file.close()
