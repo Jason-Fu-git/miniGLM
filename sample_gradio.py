@@ -3,14 +3,16 @@ from contextlib import nullcontext
 import torch
 import tiktoken
 import gradio
+import re
 from model import GLMConfig, MiniGLM
 
 # -----------------------------------------------------------------------------
 
-out_dir = 'pretrain-0912'  # ignored if init_from is not 'resume'
-max_new_tokens = 1000  # number of tokens generated in each sample
+out_dir = 'finetune-0916'  # ignored if init_from is not 'resume'
+# out_dir = "pretrain-0912"
+max_new_tokens = 1500  # number of tokens generated in each sample
 temperature = 0.8  # 1.0 = no change, < 1.0 = less random, > 1.0 = more random, in predictions
-top_k = 200  # retain only the top_k most likely tokens, clamp others to have 0 probability
+top_k = 100  # retain only the top_k most likely tokens, clamp others to have 0 probability
 seed = 1234
 device = 'cuda'  # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1', etc.
 dtype = 'bfloat16' if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else 'float16'  # 'float32' or 'bfloat16' or 'float16'
@@ -65,7 +67,7 @@ def answer_generator(question: str, history):
             x = (torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...])
 
             for i in range(max_new_tokens):
-                y = model.streaming_generate(x, temperature=temperature, top_k=top_k)
+                y, _ = model.streaming_generate(x, temperature=temperature, top_k=top_k)
                 output_tokens = y[0].tolist()[len(start_ids):]  # 去除问题部分
                 if output_tokens[-1] == 50256:  # 输出终止
                     return
@@ -76,6 +78,7 @@ def answer_generator(question: str, history):
                 except:
                     pass
                 output = decode(output_tokens)
+                output = output.replace('\uFFFD', '')  # 去除因截断产生的乱码
                 yield output
 
 
@@ -95,6 +98,7 @@ def QA(question, history):
             except:
                 pass
             output = decode(output_tokens)
+            output = output.replace('\uFFFD', '')  # 去除因截断产生的乱码
 
             return output
 

@@ -95,8 +95,8 @@ ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=
 # get data loader from data_utils.py
 if init_from == 'finetune':
     init_data = init_data_sft
-    ### TODO: 参照pretrain，使用`functools.partial`进行sft的`get_batch`函数的定义
-    get_batch = get_batch_sft
+    # 参照pretrain，使用`functools.partial`进行sft的`get_batch`函数的定义
+    get_batch = partial(get_batch_sft, batch_size=batch_size, block_size=block_size, device=device)
     ###
 else:
     init_data = init_data_pretrain

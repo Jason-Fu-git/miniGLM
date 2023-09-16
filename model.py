@@ -271,8 +271,11 @@ class MiniGLM(nn.Module):
     @torch.no_grad()
     def streaming_generate(self, idx, temperature=1.0, top_k=None):
         """
-        This method is similar to `generate` but it can be used for streaming
-        generation.
+        此函数与generate()相似，用于流式生成。返回生成拼接后的Tensor和生成该字符的条件概率
+        :param idx: 前一部分文字在字典里的index
+        :param temperature:
+        :param top_k:
+        :return: 元组 (idx, prob_idx_next)
         """
         # if the sequence context is growing too long we must crop it at block_size
         idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
@@ -290,4 +293,4 @@ class MiniGLM(nn.Module):
         idx_next = torch.multinomial(probs, num_samples=1)
         # append sampled index to the running sequence and continue
         idx = torch.cat((idx, idx_next), dim=1)
-        return idx
+        return idx, probs[0, idx_next]

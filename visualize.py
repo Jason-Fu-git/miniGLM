@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def visualize_loss(train_loss_list, train_interval, val_loss_list, val_interval, dataset, out_dir):
@@ -17,25 +18,23 @@ def visualize_loss(train_loss_list, train_interval, val_loss_list, val_interval,
     plt.close()
 
 
-def visualize_perplexity(perplexities, val_interval):
+def visualize_perplexity(perplexities, out_dir):
     # visualize perplexity of validation and save to perplexity.png
-    perplexities_len = len(perplexities)
-    x_ticks = [i * val_interval for i in range(perplexities_len)]
-    plt.plot(x_ticks, perplexities)
-    plt.xlabel("iter")
-    plt.ylabel("perplexity")
-    plt.title("perplexity of validation")
-    plt.savefig("perplexity.png")
+    perplexities = np.array(perplexities)
+    plt.hist(perplexities)  # 绘制频数直方图
+    plt.xlabel("perplexity")
+    plt.ylabel("frequency")
+    plt.title(f"perplexity evaluation, mean_value = {np.mean(perplexities)}")
+    plt.savefig(out_dir + "/perplexity.png")
     plt.close()
 
 
-def visualize_rough_l(rough_ls, val_interval):
-    # visualize rough_l of validation and save to rough_l.png
-    rough_ls_len = len(rough_ls)
-    x_ticks = [i * val_interval for i in range(rough_ls_len)]
-    plt.plot(x_ticks, rough_ls)
-    plt.xlabel("iter")
-    plt.ylabel("rough_l")
-    plt.title("rough_l of validation")
-    plt.savefig("rough_l.png")
+def visualize_rouge_l(rouge_ls, out_dir):
+    # visualize rouge_l of validation and save to rouge_l.png
+    rouge_ls = np.array(rouge_ls)
+    plt.hist(rouge_ls)  # 绘制频数直方图
+    plt.xlabel("rouge_l")
+    plt.ylabel("frequency")
+    plt.title(f"rouge_l evaluation, mean value = {np.mean(rouge_ls)}")
+    plt.savefig(out_dir + "/rouge_l.png")
     plt.close()
